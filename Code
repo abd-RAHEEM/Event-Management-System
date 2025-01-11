@@ -1,0 +1,153 @@
+import pandas as pd
+
+class Event:
+    def __init__(self, name, priority, budget, deadline, duration):
+        self.name = name
+        self.priority = priority
+        self.budget = budget
+        self.deadline = deadline
+        self.duration = duration
+
+def comp(e1,e2):
+  c1=0
+  c2=0
+  if (e1.priority<e2.priority):
+    c2+=1
+  elif (e1.priority>e2.priority):
+    c1+=1
+  if (e1.budget<e2.budget):
+    c2+=1
+  elif (e1.budget>e2.budget):
+    c1+=1
+  if (e1.duration<e2.duration):
+    c2+=1
+  elif (e1.duration>e2.duration):
+    c1+=1
+  if c1<c2 : return 1
+  if c2<c1 : return 2 # Corrected the comparison here
+  return 0
+
+class EventManager:
+    def __init__(self, num_halls):
+        self.num_halls = num_halls
+        self.schedules = [[] for _ in range(num_halls)]
+
+    def add_event(self, event):
+        free_hall = 0
+        for i in range(1, self.num_halls):
+            if len(self.schedules[i]) < len(self.schedules[free_hall]):
+                free_hall = i
+
+        inserted = False
+        for i in range(len(self.schedules[free_hall])):
+            if (1==comp(event,self.schedules[free_hall][i])) or \
+               (0==comp(event , self.schedules[free_hall][i]) and event.deadline < self.schedules[free_hall][i].deadline):
+                self.schedules[free_hall].insert(i, event)
+                inserted = True
+                break
+        if not inserted:
+            self.schedules[free_hall].append(event)
+
+    def display_events(self):
+        for i in range(self.num_halls):
+          print(f"\nEvents in Hall {i + 1}:")
+          if not self.schedules[i]:
+              print("No events scheduled for this hall.")
+              continue
+          day = 0
+          for event in self.schedules[i]:
+              if event.deadline < day + event.duration:
+                  print(f"{event.name} is being cancelled")
+                  continue
+              print(f"Day: {day} to {event.duration + day} :: Event Name: {event.name} ")
+              day += event.duration
+
+class User:
+    def __init__(self, name, num_halls):
+        self.name = name
+        self.event_manager = EventManager(num_halls)
+
+if __name__ == "__main__":
+    users_df = pd.DataFrame(columns=['name'])
+    users = {}
+    current_user = None
+    num_of_resources = 0 
+
+    while True:
+        print("\nEnter an option:")
+        print("1. Login")
+        print("2. Sign Up")
+        print("3. Exit \n")
+        for i in users_df['name'].values:
+            print(i)
+        choice = input("Your choice: ")
+
+        if choice == "1":
+            name = input("Enter your name to login: ")
+            if name in users_df['name'].values:
+                current_user = users.get(name)
+                if current_user is None:
+                    if num_of_resources == 0:
+                        num_of_resources = int(input("Enter the number of event halls: "))
+                    current_user = User(name, num_of_resources)
+                    users[name] = current_user
+                print(f"Welcome back, {name}!")
+            else:
+                print("User not found. Please sign up first.")
+
+        elif choice == "2":
+            name = input("Enter your name to sign up: ")
+            if name in users_df['name'].values:
+                print("User already exists. Please log in.")
+            else:
+                if num_of_resources == 0:
+                    num_of_resources = int(input("Enter the number of event venues: "))
+                current_user = User(name, num_of_resources)
+                users[name] = current_user
+                users_df = pd.concat([users_df, pd.DataFrame([{'name': name}])], ignore_index=True)
+                print(f"User {name} registered successfully!")
+
+        elif choice == "3":
+            print("Exiting program.")
+            break
+        else:
+            print("Invalid choice. Please select 1, 2, or 3.")
+
+        if current_user:
+            while True:
+                print("\nEnter an option:")
+                print("1. Add Event")
+                print("2. Display Events")
+                print("3. Logout")
+
+                choice = input("Your choice: ")
+
+                if choice == "1":
+                    event_name = input("Enter event name: ")
+                    priority=0
+                    p = int(input("Enter event type \n0 : Lecture\n1 : Workshop \n2 : Club activity "))
+                    if p==0:
+                        priority += 2
+                    elif p==1:
+                        priority += 1
+                    else:
+                        priority += 3
+                    duration = int(input("Enter event duration in days: "))
+                    x = int(input("Enter event budget (min budget:1000/day)"))
+                    while x/duration<1000:
+                        print("Enter budget higher than minimum budget : ")
+                        x = int(input("Enter event budget (min budget:1000/day)"))
+                    days_until_deadline = int(input("Enter days until deadline (e.g., 5 for 5 days from today): "))
+                    current_user.event_manager.add_event(Event(event_name, priority,x, days_until_deadline, duration))
+                    print("Event added successfully.")
+
+                elif choice == "2":
+                    print("\nAll Events in Your Schedule:")
+                    current_user.event_manager.display_events()
+
+                elif choice == "3":
+                    print(f"Logging out {current_user.name}.")
+                    current_user = None
+                    break
+                else:
+                    print("Invalid choice. Please select 1, 2, or 3.")
